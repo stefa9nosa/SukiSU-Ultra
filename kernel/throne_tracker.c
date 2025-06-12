@@ -208,7 +208,7 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 	struct list_head data_path_list;
 	INIT_LIST_HEAD(&data_path_list);
 	INIT_LIST_HEAD(&apk_path_hash_list);
-	static unsigned long data_app_magic __read_mostly = 0;
+	unsigned long data_app_magic = 0;
 	
 	// Initialize APK cache list
 	struct apk_path_hash *pos, *n;
@@ -260,16 +260,18 @@ void search_manager(const char *path, int depth, struct list_head *uid_data)
 				}
 				
 				// grab magic on first folder, which is /data/app
-				if (unlikely(!data_app_magic)) {
+				if (!data_app_magic) {
 					if (file->f_inode->i_sb->s_magic) {
 						data_app_magic = file->f_inode->i_sb->s_magic;
 						pr_info("%s: dir: %s got magic! 0x%lx\n", __func__, pos->dirpath, data_app_magic);
-					} else
+					} else {
+						filp_close(file, NULL);
 						goto skip_iterate;
+					}
 				}
 				
 				if (file->f_inode->i_sb->s_magic != data_app_magic) {
-					pr_info("%s: skip: %s magic: 0x%lx expected: 0x%lx\n", __func__, pos->dirpath, 
+					pr_info("%s: skip: %s magic: 0x%lx expected: 0x%lx\n", __func__, pos->dirpath,
 						file->f_inode->i_sb->s_magic, data_app_magic);
 					filp_close(file, NULL);
 					goto skip_iterate;
